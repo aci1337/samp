@@ -5,3 +5,5 @@ This is a pretty basic, sa:mp cheat made in some days i don't have time to do an
 For any help:
 
 Discord: aci25#0887
+
+Thanks for simcraft help <33
