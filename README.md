@@ -4,5 +4,4 @@ This is a pretty basic, sa:mp cheat made in some days i don't have time to do an
 
 For any help:
 
-Discord: maysin#0887
-Discord Server: https://discord.gg/sZKHCVcR
+Discord: aci25#0887
