@@ -6,4 +6,4 @@ For any help:
 
 Discord: aci25#0887
 
-Thanks for simcraft help <33
+Thanks for simcraft help (FLY) <33
