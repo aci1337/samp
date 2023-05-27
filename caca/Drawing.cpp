@@ -3,21 +3,30 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <Windows.h>
+#include <iostream>
+
 #include <stdio.h>
 #include <chrono>
-#include <thread>
-#include <windows.h>
-#include <dwmapi.h>
-#include "Drawing.h"
 #include <thread>
 #include <xlocmon>
 #include <dwmapi.h>
 
+#include "Drawing.h"
+
+using namespace std;
+
 bool test;
 bool escapejail;
 
-#include  <iostream>
-#define address_CPed 0x76F3B8
+#define address_ped 0x76F3B8
+#define address_money1 0xB7CE50
+#define address_money2 0xB7CE54
+#define address_money3 0xBAA430
+#define offset_health 0x540
+#define offset_armor 0x548
+#define offset_weaponslot_0 0x5A0
+#define offset_weaponslot_2 0x5D8
+#define offset_total_pistol_ammo 0x5E4
 
 ImVec2 Drawing::vWindowSize = { 500, 500 };
 ImGuiWindowFlags Drawing::WindowFlags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize;
@@ -25,18 +34,18 @@ bool Drawing::bDraw = true;
 
 void Drawing::Active()
 {
-
 	bDraw = true;
 }
 
 bool Drawing::isActive()
 {
-
 	return bDraw == true;
 }
+
 #include "abc.h"
 
 uintptr_t GetModuleBaseAddress(DWORD, const wchar_t*);
+
 DWORD processID;
 HANDLE handleProcess;
 
@@ -71,15 +80,6 @@ uintptr_t GetModuleBaseAddress(DWORD processId, const wchar_t* moduleName)
 	return moduleBaseAddress;
 }
 
-template<typename T>
-inline T* ptr_add(T* cped, uint32_t n) noexcept {
-	char* ptr = (char*)cped;
-	ptr += n;
-	return (T*)ptr;
-};
-
-
-
 template <class T>
 void wpm(T valueToWrite, DWORD addressToWrite)
 {
@@ -91,22 +91,26 @@ template <class T>
 T rpm(T addressToRead)
 {
 	T rpmBuffer;
-
 	handleProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID);
-
 	ReadProcessMemory(handleProcess, (LPCVOID)addressToRead, &rpmBuffer, sizeof(T), NULL);
-
 	return rpmBuffer;
 }
 
+template<typename T>
+inline T* ptr_add(T* cped, uint32_t n) noexcept {
+	char* ptr = (char*)cped;
+	ptr += n;
+	return (T*)ptr;
+};
+
 uintptr_t GetPlayerBaseAddress()
 {
-	return rpm<uintptr_t>(GetModuleBaseAddress(processID, L"gta_sa.exe") + address_CPed);
+	return rpm<uintptr_t>(GetModuleBaseAddress(processID, L"gta_sa.exe") + address_ped);
 }
 
 #include <vector>
 
-DWORD GetPointerAddress(DWORD ptr, std::vector<DWORD> offsets) {
+DWORD GetPointerAddress(DWORD ptr, vector<DWORD> offsets) {
 	DWORD addr = ptr;
 	for (int i = 0; i < offsets.size(); ++i) {
 		addr = *(DWORD*)addr;
@@ -115,75 +119,67 @@ DWORD GetPointerAddress(DWORD ptr, std::vector<DWORD> offsets) {
 	return addr;
 }
 
+uintptr_t moduleBase;
+
 bool fly;
 float cum = 0.0f;
 bool isInvincible = false;
 bool bStat;
 bool term = false;
-uintptr_t moduleBase;
 bool pMoney = false;
 bool pWantedLevelPoints;
 bool dar = false;
 bool nospread = false;
 bool wallhack = false;
-bool teleport = false;
-bool BoomAllCloseVehicles = false;
+bool boom_all_close_cars = false;
 bool jetpeck = false;
-#define address_Money 0xB7CE50
-#define adderss_Muni  0xB7CE54
-#define adderss_Muni12  0xBAA430
-#define offset_HEALTH 0x540
-#define ARMOUR 0x548
-#define offset_WEAPONSLOT_0 0x5A0
-#define offset_WEAPONSLOT_2 0x5D8
-#define offset_TOTAL_PISTOL_AMMO 0x5E4
 bool thacar = false;
-bool imp = false;
+bool cargod = false;
 bool ped = false;
 bool isCrazyClr = false;
-bool muni = false;
-bool hel = false;
+bool moneygive = false;
+bool health = false;
 bool random = false;
-bool armur = false;
+bool armorgive = false;
 bool run = false;
 bool speedy = false;
 bool value;
+
 HWND hwnd = NULL;
 
-DWORD* Balls = (DWORD*)0xB6F5F0;
-DWORD* Balls2 = (DWORD*)0xB6F3B8;
+DWORD* actor = (DWORD*)0xB6F5F0;
+DWORD* car2 = (DWORD*)0xB6F3B8;
 
-void ILuvAcTeleport(float x, float y, float z, DWORD rot_matrix)
+void teleport(float x, float y, float z, DWORD rot_matrix)
 {
-
-	if (*Balls == NULL && *Balls2 == NULL)
+	if (*actor == NULL && *car2 == NULL)
 		return;
 
-	BYTE* ptrPlayerStatus = (BYTE*)((*Balls) + 0x530);
+	BYTE* playerStatus = (BYTE*)((*actor) + 0x530);
 
-	if (*ptrPlayerStatus != 50)
+	if (*playerStatus != 50)
 	{
-		DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-		DWORD* ptrPlayerX = (DWORD*)((*ptrPlayerXYZ) + 0x30);
-		DWORD* ptrPlayerY = (DWORD*)((*ptrPlayerXYZ) + 0x34);
-		DWORD* ptrPlayerZ = (DWORD*)((*ptrPlayerXYZ) + 0x38);
-		DWORD* ptrPlayerRot = (DWORD*)((*ptrPlayerXYZ) + 0x0 + 0x2C);
+		DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+		float* playerX = (float*)((*playerXYZ) + 0x30);
+		float* playerY = (float*)((*playerXYZ) + 0x34);
+		float* playerZ = (float*)((*playerXYZ) + 0x38);
+		float* playerROT = (float*)((*playerXYZ) + 0x0 + 0x2C);
 
-		*ptrPlayerX = x;
-		*ptrPlayerY = y;
-		*ptrPlayerZ = z;
-		*ptrPlayerRot = rot_matrix;
+		*playerX = x;
+		*playerY = y;
+		*playerZ = z;
+		*playerROT = rot_matrix;
 	}
 	else
 	{
-		if (*Balls2)
+		if (*car2)
 		{
-			float* xSpeed = (float*)((*Balls2) + 68);
-			float* ySpeed = (float*)((*Balls2) + 72);
-			float* zSpeed = (float*)((*Balls2) + 76);
-			float* xSpin = (float*)((*Balls2) + 80);
-			float* ySpin = (float*)((*Balls2) + 84);
-			float* zSpin = (float*)((*Balls2) + 88);
+			float* xSpeed = (float*)((*car2) + 68);
+			float* ySpeed = (float*)((*car2) + 72);
+			float* zSpeed = (float*)((*car2) + 76);
+			float* xSpin = (float*)((*car2) + 80);
+			float* ySpin = (float*)((*car2) + 84);
+			float* zSpin = (float*)((*car2) + 88);
 
 			*xSpeed = 0.0f;
 			*ySpeed = 0.0f;
@@ -192,90 +188,107 @@ void ILuvAcTeleport(float x, float y, float z, DWORD rot_matrix)
 			*ySpin = 0.0f;
 			*zSpin = 0.0f;
 		}
-		DWORD* ptrVehicleXYZ = (DWORD*)((*Balls2) + 0x14);
-		DWORD* ptrVehicleX = (DWORD*)((*ptrVehicleXYZ) + 0x30);
-		DWORD* ptrVehicleY = (DWORD*)((*ptrVehicleXYZ) + 0x34);
-		DWORD* ptrVehicleZ = (DWORD*)((*ptrVehicleXYZ) + 0x38);
-		DWORD* ptrVehicleRot = (DWORD*)((*ptrVehicleXYZ) + 0x0 + 0x2C);
+		DWORD* carXYZ = (DWORD*)((*car2) + 0x14);
+		float* carX = (float*)((*carXYZ) + 0x30);
+		float* carY = (float*)((*carXYZ) + 0x34);
+		float* carZ = (float*)((*carXYZ) + 0x38);
+		float* carROT = (float*)((*carXYZ) + 0x0 + 0x2C);
 
-		*ptrVehicleX = x;
-		*ptrVehicleY = y;
-		*ptrVehicleZ = z;
-		*ptrVehicleRot = rot_matrix;
+		*carX = x;
+		*carY = y;
+		*carZ = z;
+		*carROT = rot_matrix;
 	}
 }
 
-bool GetCords;
-
-char szCoords[256];
-
-char* GetPlayerCoordinates()
+void marker_teleport()
 {
-	if (*Balls == NULL)
+	if ((*(int*)0xBA6774 != 0))
+	{
+		float mapPos[3];
+		for (int i = 0; i < (0xAF * 0x28); i += 0x28)
+		{
+			if (*(short*)(0xBA873D + i) == 4611)
+			{
+				float* pos = (float*)(0xBA86F8 + 0x28 + i);
+				mapPos[0] = *pos;
+				mapPos[1] = *(pos + 1);
+				mapPos[2] = ((float(__cdecl*)(float, float))0x569660)(mapPos[0], mapPos[1]);
+				teleport(mapPos[0], mapPos[1], mapPos[2] + 2, 0);
+			}
+		}
+	}
+}
+
+bool get_cords = false;
+bool marker_tp = false;
+bool just_tp = false;
+
+char* get_player_coords()
+{
+	if (*actor == NULL)
 		return 0;
 
-	DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-	DWORD* ptrPlayerX = (DWORD*)((*ptrPlayerXYZ) + 0x30);
-	DWORD* ptrPlayerY = (DWORD*)((*ptrPlayerXYZ) + 0x34);
-	DWORD* ptrPlayerZ = (DWORD*)((*ptrPlayerXYZ) + 0x38);
-	DWORD* ptrPlayerRot = (DWORD*)((*ptrPlayerXYZ) + 0x0 + 0x2C);
+	char szCoords[256];
 
-	std::cout << "\nptrPlayerX" << *ptrPlayerX;
-	std::cout << "\nptrPlayerY" << *ptrPlayerY;
-	std::cout << "\nptrPlayerZ" << *ptrPlayerZ;
-	std::cout << "\nptrPlayerROT" << *ptrPlayerRot;
+	DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+	float* playerX = (float*)((*playerXYZ) + 0x30);
+	float* playerY = (float*)((*playerXYZ) + 0x34);
+	float* playerZ = (float*)((*playerXYZ) + 0x38);
+	float* playerRot = (float*)((*playerXYZ) + 0x0 + 0x2C);
 
-	//sprintf(szCoords, "X: %d, Y: %d, Z: %d, Rot: %d", *ptrPlayerX, *ptrPlayerY, *ptrPlayerZ, *ptrPlayerRot);
+	cout << "\nplayerX" << *playerX;
+	cout << "\nplayerY" << *playerY;
+	cout << "\nplayerZ" << *playerZ;
+	cout << "\nplayerROT" << *playerRot;
+
+	//sprintf(szCoords, "X: %d, Y: %d, Z: %d, Rot: %d", *playerX, *playerY, *playerZ, *playerROT);
 	return szCoords;
 }
 
-
-float GetCurrentX() {
-	if (*Balls == NULL)
+float get_cur_x() {
+	if (*actor == NULL)
 		return 0;
 
-	DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-	DWORD* ptrPlayerX = (DWORD*)((*ptrPlayerXYZ) + 0x30);
+	DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+	float* playerX = (float*)((*playerXYZ) + 0x30);
 
-	return float(*ptrPlayerX);
+	return float(*playerX);
 }
 
-
-float GetCurrentY() {
-	if (*Balls == NULL)
+float get_cur_y() {
+	if (*actor == NULL)
 		return 0;
 
-	DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-	DWORD* ptrPlayerY = (DWORD*)((*ptrPlayerXYZ) + 0x34);
+	DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+	float* playerY = (float*)((*playerXYZ) + 0x34);
 
-	return float(*ptrPlayerY);
+	return float(*playerY);
 }
 
-float GetCurrentZ() {
-	if (*Balls == NULL)
+float get_cur_z() {
+	if (*actor == NULL)
 		return 0;
 
-	DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-	DWORD* ptrPlayerZ = (DWORD*)((*ptrPlayerXYZ) + 0x38);
+	DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+	float* playerZ = (float*)((*playerXYZ) + 0x38);
 
-	return float(*ptrPlayerZ);
+	return float(*playerZ);
 }
 
 void Drawing::Draw()
 {
 	if (isActive())
 	{
-
-
 		ImGui::SetNextWindowSize(vWindowSize);
 		ImGui::SetNextWindowBgAlpha(1.0f);
-		ImGui::Begin("", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+		ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2, ImGui::GetIO().DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+		ImGui::Begin("samp sdk", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 		{
 			moduleBase = (uintptr_t)GetModuleHandle(NULL);
 
-
-			if (armur) {
-				wpm(100.0f, GetPlayerBaseAddress() + ARMOUR);
+			if (armorgive) {
+				wpm(100.0f, GetPlayerBaseAddress() + offset_armor);
 			}
 
 			if (run) {
@@ -283,38 +296,33 @@ void Drawing::Draw()
 				*runnybabby = 50;
 			}
 
-			if (hel) {
-				float* hel = (float*)GetPointerAddress(moduleBase + 0x17333C, { 0x588 });
-				*hel = 1221;
+			if (health) {
+				float* hp = (float*)GetPointerAddress(moduleBase + 0x17333C, { 0x588 });
+				*hp = 1221;
 			}
 
-			if (muni) {
+			if (moneygive) {
 				int* muni = (int*)GetPointerAddress(moduleBase + 0x6488B8, { 0x38C, 0x264, 0xC, 0x160, 0x480, 0xB4 });
 				*muni = 13333337;
 			}
-
 
 			if (speedy) {
 				int* tary = (int*)GetPointerAddress(moduleBase + 0x15C1E0, { 0x160 });
 				*tary = 3779805176;
 			}
 
-			if (GetCords) {
-				std::cout << "AAA";
-				GetPlayerCoordinates();
-				GetCords = false;
+			if (get_cords) {
+				cout << "AAA";
+				get_player_coords();
+				get_cords = false;
 			}
 
 			if (ped) {
 				if (GetAsyncKeyState(VK_ADD)) {
-
 					cum += 5.0f;
-
 				}
 				else if (GetAsyncKeyState(VK_SUBTRACT)) {
-
 					cum -= 5.0f;
-
 				}
 
 				DWORD* ped = (DWORD*)0xB7CD98;
@@ -327,7 +335,6 @@ void Drawing::Draw()
 				float hp = 0;
 				float hundred = 0;
 
-				
 				for (int i = 0; i < 500; i++) {
 					next = (DWORD*)(*ped + (0x7C4 * i));
 
@@ -351,151 +358,133 @@ void Drawing::Draw()
 				}
 			}
 			if (thacar) {
-				DWORD CCar = *(DWORD*)0xB6F980;
-				*(DWORD*)(CCar + 1192) = 0x5;
+				DWORD car = *(DWORD*)0xB6F980;
+				*(DWORD*)(car + 0x4A8) = 0x5;
 			}
 
-			if (BoomAllCloseVehicles) {
-				
+			if (boom_all_close_cars) {
 			}
-			
+
 			if (fly) {
+				BYTE* playerStatus = (BYTE*)((*actor) + 0x530);
 
-				BYTE* ptrPlayerStatus = (BYTE*)((*Balls) + 0x530);
+				DWORD* playerXYZ = (DWORD*)((*actor) + 0x14);
+				DWORD* playerX = (DWORD*)((*playerXYZ) + 0x30);
+				DWORD* playerY = (DWORD*)((*playerXYZ) + 0x34);
+				DWORD* playerZ = (DWORD*)((*playerXYZ) + 0x38);
 
-				DWORD* ptrPlayerXYZ = (DWORD*)((*Balls) + 0x14);
-				DWORD* ptrPlayerX = (DWORD*)((*ptrPlayerXYZ) + 0x30);
-				DWORD* ptrPlayerY = (DWORD*)((*ptrPlayerXYZ) + 0x34);
-				DWORD* ptrPlayerZ = (DWORD*)((*ptrPlayerXYZ) + 0x38);
+				DWORD* carXYZ = (DWORD*)((*car2) + 0x14);
+				DWORD* carX = (DWORD*)((*carXYZ) + 0x30);
+				DWORD* carY = (DWORD*)((*carXYZ) + 0x34);
+				DWORD* carZ = (DWORD*)((*carXYZ) + 0x38);
 
-				DWORD* CARptrPlayerXYZ = (DWORD*)((*Balls2) + 0x14);
-				DWORD* CARptrPlayerX = (DWORD*)((*CARptrPlayerXYZ) + 0x30);
-				DWORD* CARptrPlayerY = (DWORD*)((*CARptrPlayerXYZ) + 0x34);
-				DWORD* CARptrPlayerZ = (DWORD*)((*CARptrPlayerXYZ) + 0x38);
-
-				if (*ptrPlayerStatus != 50)
+				if (*playerStatus != 50)
 				{
-				
-
-
 					if (GetAsyncKeyState(VK_SPACE)) {
-	
-						ILuvAcTeleport(float(*ptrPlayerX), float(*ptrPlayerY), float(*ptrPlayerZ + 173633), 0);
+						teleport(float(*playerX), float(*playerY), float(*playerZ + 173633), 0);
 					}
 
 					if (GetAsyncKeyState(0x57)) {
-						ILuvAcTeleport(float(*ptrPlayerX + ZValue), float(*ptrPlayerY), float(*ptrPlayerZ), 0);
+						teleport(float(*playerX + ZValue), float(*playerY), float(*playerZ), 0);
 					}
-
 
 					if (GetAsyncKeyState(0x53)) {
-						ILuvAcTeleport(float(*ptrPlayerX - ZValue), float(*ptrPlayerY), float(*ptrPlayerZ), 0);
+						teleport(float(*playerX - ZValue), float(*playerY), float(*playerZ), 0);
 					}
-
 
 					if (GetAsyncKeyState(0x44)) {
-						ILuvAcTeleport(float(*ptrPlayerX), float(*ptrPlayerY + ZValue), float(*ptrPlayerZ), 0);
+						teleport(float(*playerX), float(*playerY + ZValue), float(*playerZ), 0);
 					}
 
-
 					if (GetAsyncKeyState(0x41)) {
-						ILuvAcTeleport(float(*ptrPlayerX), float(*ptrPlayerY - ZValue), float(*ptrPlayerZ), 0);
+						teleport(float(*playerX), float(*playerY - ZValue), float(*playerZ), 0);
 					}
 				}
 				else {
-
 					if (GetAsyncKeyState(VK_SPACE)) {
-
-						ILuvAcTeleport(float(*CARptrPlayerX), float(*CARptrPlayerY), float(*CARptrPlayerZ + ZValue + 17000), 0);
+						teleport(float(*carX), float(*carY), float(*carZ + ZValue + 17000), 0);
 					}
 
 					if (GetAsyncKeyState(0x57)) {
-						ILuvAcTeleport(float(*CARptrPlayerX + ZValue), float(*CARptrPlayerY), float(*CARptrPlayerZ), 0);
+						teleport(float(*carX + ZValue), float(*carY), float(*carZ), 0);
 					}
-
 
 					if (GetAsyncKeyState(0x53)) {
-						ILuvAcTeleport(float(*CARptrPlayerX - ZValue), float(*CARptrPlayerY), float(*CARptrPlayerZ), 0);
+						teleport(float(*carX - ZValue), float(*carY), float(*carZ), 0);
 					}
-
 
 					if (GetAsyncKeyState(0x44)) {
-						ILuvAcTeleport(float(*CARptrPlayerX), float(*CARptrPlayerY + ZValue), float(*CARptrPlayerZ), 0);
+						teleport(float(*carX), float(*carY + ZValue), float(*carZ), 0);
 					}
-
 
 					if (GetAsyncKeyState(0x41)) {
-						ILuvAcTeleport(float(*CARptrPlayerX), float(*CARptrPlayerY - ZValue), float(*CARptrPlayerZ), 0);
+						teleport(float(*carX), float(*carY - ZValue), float(*carZ), 0);
 					}
 				}
-
-
-				//if (GetA)
 			}
 
-
-			if (teleport) {
-				ILuvAcTeleport(float(1148036875), float(3302538432), float(1096335360), 0);
-				teleport = false;
+			if (just_tp) {
+				teleport(float(0), float(0), float(10), 0);
+				just_tp = false;
 			}
+
 			if (dar) {
-				DWORD CCar = *(DWORD*)0xB6F980;
-				*(float*)(CCar + 1216) = 0.0f; // Health of the Car sir
+				DWORD car = *(DWORD*)0xB6F980;
+				*(float*)(car + 0x4C0) = 0.0f;
 			}
 
-			if (imp) {
-				DWORD CCar = *(DWORD*)0xB6F980;
-				*(float*)(CCar + 1216) = 60.0f; // Health of the Car sir
+			if (cargod) {
+				DWORD car = *(DWORD*)0xB6F980;
+				*(float*)(car + 0x4C0) = 1000.0f;
 			}
 
 			if (wallhack) {
-				DWORD ped = *(DWORD*)0xB7CD98;
-				*(float*)(ped + 0x2C) = (float)value;
-				std::this_thread::sleep_for(std::chrono::milliseconds(150));
 			}
 
 			if (escapejail) {
-				ILuvAcTeleport(float(1147988971), float(3302567894), float(1096343490), 0);
+				teleport(float(1025), float(1), float(12), 0);
 				escapejail = false;
 			}
 
-			if (test)
-			{
+			if (test) {
 				BYTE* niiga = (BYTE*)0x96914A;
 				*niiga = 1;
 			}
-			else
-			{
+			else {
 				BYTE* niiga = (BYTE*)0x96914A;
 				*niiga = 0;
 			}
 
 			if (jetpeck) {
-				DWORD addr = 0x439600;
-				__asm call addr;
+				typedef void (*fptr)(void);
+				fptr jetpack = (fptr)0x439600;
+				jetpack();
 			}
 
 			if (random) {
-				wpm(1, GetPlayerBaseAddress() + offset_WEAPONSLOT_0);
-				wpm(22, GetPlayerBaseAddress() + offset_WEAPONSLOT_2);
-				wpm(15, GetPlayerBaseAddress() + offset_TOTAL_PISTOL_AMMO);
+				wpm(1, GetPlayerBaseAddress() + offset_weaponslot_0);
+				wpm(22, GetPlayerBaseAddress() + offset_weaponslot_2);
+				wpm(15, GetPlayerBaseAddress() + offset_total_pistol_ammo);
 			}
 
 			if (term) {
 				unsigned int* termal = (unsigned int*)0xC402B9;
-
 				*termal = bStat;
 			}
 
 			if (nospread) {
 				// I will keep resetting
 				float* spread = (float*)0xB7CDC8;
-				*spread = 0.0f; 
-
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				*spread = 0.0f;
+				this_thread::sleep_for(chrono::milliseconds(1));
 			}
 
-			ImGui::Text("Aim");
+			if (marker_tp) {
+				marker_teleport();
+				marker_tp = false;
+			}
+
+			ImGui::Text("Weapon");
 			ImGui::Checkbox("No Spread", &nospread);
 			ImGui::Checkbox("Gun Slots Bug", &random);
 			ImGui::Spacing();
@@ -508,14 +497,14 @@ void Drawing::Draw()
 			}
 			ImGui::Spacing();
 			ImGui::Text("Exploits");
-			ImGui::Checkbox("Invicibile Car", &imp);
-			ImGui::Checkbox("Set car on fire", &dar);
-		//	ImGui::Checkbox("Teleport to a random location [BETA, DETECTED]", &teleport);
-	//		ImGui::Checkbox("Bomb All The Closed Vehicles", &BoomAllCloseVehicles);
+			ImGui::Checkbox("Car Godmode", &cargod);
+			ImGui::Checkbox("Blow up the car", &dar);
+			//ImGui::Checkbox("Teleport to a random location [BETA, DETECTED]", &just_tp);
+			//ImGui::Checkbox("Bomb All The Closed Vehicles", &boom_all_close_cars);
 			ImGui::Checkbox("Place Bomb", &thacar);
 			ImGui::Checkbox("Thermal", &term);
 			ImGui::Checkbox("Push all closest peds to you [+ and -]", &ped);
-			ImGui::Checkbox("speedhack [bike]", &speedy);		
+			ImGui::Checkbox("Speedhack [bike]", &speedy);
 			ImGui::Checkbox("Fly", &fly);
 			ImGui::SliderFloat("Fly Speed", &ZValue, 0, 5000);
 			ImGui::SliderFloat("Z Multiply", &XValue, 0, 1000000);
@@ -526,20 +515,18 @@ void Drawing::Draw()
 			ImGui::Spacing();
 
 			ImGui::Text("Health/Money/Spawn [Risky]");
-			ImGui::Checkbox("Health Giver", &hel);
+			ImGui::Checkbox("Health Giver", &health);
 			ImGui::Checkbox("Infinite Run", &run);
-			ImGui::Checkbox("Money give [Broken]", &muni);
-			ImGui::Checkbox("Spawn JetPack [Risk]", &jetpeck);
+			ImGui::Checkbox("Money give [Broken]", &moneygive);
+			ImGui::Checkbox("Spawn Jetpack [Risk]", &jetpeck);
+			ImGui::Checkbox("Marker Teleport", &marker_tp);
 			ImGui::Checkbox("Fly", &fly);
-		
-
-
 		}
 		ImGui::End();
 	}
 
-	#ifdef _WINDLL
+#ifdef _WINDLL
 	if (GetAsyncKeyState(VK_INSERT) & 1)
 		bDraw = !bDraw;
-	#endif
-	}
+#endif
+}
